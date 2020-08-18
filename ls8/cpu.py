@@ -83,6 +83,9 @@ class CPU:
 
             self.branchtable[ir]()
 
+            instruction_size = ir >> 6
+            self.pc += 1 + instruction_size
+
     def ram_read(self, address):
         return self.ram[address]
 
@@ -94,8 +97,6 @@ class CPU:
 
     def handle_ldi(self):
         self.reg[self.operand_a] = self.operand_b
-        self.pc += 3
 
     def handle_prn(self):
         print(self.reg[self.operand_a])
-        self.pc += 2
