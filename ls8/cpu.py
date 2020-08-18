@@ -10,6 +10,21 @@ LDI = 0b10000010
 NOP = 0b00000000
 PRN = 0b01000111
 
+# ALU Instruction Set
+ADD = 0b10100000
+AND = 0b10101000
+CMP = 0b10100111
+DEC = 0b01100110
+DIV = 0b10100011
+INC = 0b01100101
+MOD = 0b10100100
+MUL = 0b10100010
+OR = 0b10101010
+SHL = 0b10101100
+SHR = 0b10101101
+SUB = 0b10100001
+XOR = 0b10101011
+
 
 class CPU:
     """Main CPU class."""
@@ -23,6 +38,7 @@ class CPU:
         self.branchtable = {}
         self.branchtable[HLT] = self.handle_hlt
         self.branchtable[LDI] = self.handle_ldi
+        self.branchtable[MUL] = self.alu
         self.branchtable[PRN] = self.handle_prn
 
     def load(self):
@@ -37,11 +53,11 @@ class CPU:
                     self.ram[address] = instruction
                     address += 1
 
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, op, a, b):
         """ALU operations."""
 
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+        if op == MUL:
+            self.reg[a] *= self.reg[b]
         # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -70,10 +86,10 @@ class CPU:
         self.running = True
         while self.running:
             ir = self.ram_read(self.pc)
-            self.operand_a = self.ram_read(self.pc + 1)
-            self.operand_b = self.ram_read(self.pc + 2)
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
 
-            self.branchtable[ir]()
+            self.branchtable[ir](ir, operand_a, operand_b)
 
             instruction_size = ir >> 6
             self.pc += 1 + instruction_size
@@ -84,11 +100,11 @@ class CPU:
     def ram_write(self, value, address):
         self.ram[address] = value
 
-    def handle_hlt(self):
+    def handle_hlt(self, op, a, b):
         self.running = False
 
-    def handle_ldi(self):
-        self.reg[self.operand_a] = self.operand_b
+    def handle_ldi(self, op, a, b):
+        self.reg[a] = b
 
-    def handle_prn(self):
-        print(self.reg[self.operand_a])
+    def handle_prn(self, op, a, b):
+        print(self.reg[a])
