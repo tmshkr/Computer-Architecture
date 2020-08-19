@@ -8,6 +8,8 @@ import re
 HLT = 0b00000001
 LDI = 0b10000010
 NOP = 0b00000000
+PUSH = 0b01000101
+POP = 0b01000110
 PRN = 0b01000111
 
 # ALU Instruction Set
@@ -32,6 +34,7 @@ class CPU:
     def __init__(self):
         self.ram = [0] * 256
         self.reg = [0] * 8
+        self.reg[7] = 0xF4  # stack pointer
         self.pc = 0
 
         # Set up the branch table
@@ -40,6 +43,8 @@ class CPU:
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[MUL] = self.alu
         self.branchtable[PRN] = self.handle_prn
+        self.branchtable[PUSH] = self.handle_push
+        self.branchtable[POP] = self.handle_pop
 
     def load(self):
         """Load a program into memory."""
@@ -55,9 +60,10 @@ class CPU:
 
     def alu(self, op, a, b):
         """ALU operations."""
+        # bitwise-AND the result with 0xFF (255) to keep the register values in range
 
         if op == MUL:
-            self.reg[a] *= self.reg[b]
+            self.reg[a] *= self.reg[b] & 0xFF
         # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -108,3 +114,11 @@ class CPU:
 
     def handle_prn(self, op, a, b):
         print(self.reg[a])
+
+    def handle_push(self, op, a, b):
+        self.reg[7] -= 1
+        self.ram[self.reg[7]] = self.reg[a]
+
+    def handle_pop(self, op, a, b):
+        self.reg[a] = self.ram[self.reg[7]]
+        self.reg[7] += 1
