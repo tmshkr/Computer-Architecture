@@ -5,12 +5,14 @@ import re
 
 # Instruction Set
 # https://github.com/tmshkr/Computer-Architecture/blob/master/LS8-spec.md#instruction-set
+CALL = 0b01010000
 HLT = 0b00000001
 LDI = 0b10000010
 NOP = 0b00000000
 PUSH = 0b01000101
 POP = 0b01000110
 PRN = 0b01000111
+RET = 0b00010001
 
 # ALU Instruction Set
 ADD = 0b10100000
@@ -39,12 +41,15 @@ class CPU:
 
         # Set up the branch table
         self.branchtable = {}
+        self.branchtable[ADD] = self.alu
+        self.branchtable[CALL] = self.handle_call
         self.branchtable[HLT] = self.handle_hlt
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[MUL] = self.alu
         self.branchtable[PRN] = self.handle_prn
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
+        self.branchtable[RET] = self.handle_ret
 
     def load(self):
         """Load a program into memory."""
@@ -64,6 +69,8 @@ class CPU:
 
         if op == MUL:
             self.reg[a] *= self.reg[b] & 0xFF
+        elif op == ADD:
+            self.reg[a] += self.reg[b]
         # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -97,8 +104,14 @@ class CPU:
 
             self.branchtable[ir](ir, operand_a, operand_b)
 
-            instruction_size = ir >> 6
-            self.pc += 1 + instruction_size
+            # AABCDDDD
+            # if bit C is 1, it sets the PC
+            sets_pc = ir >> 4 & 0b1
+            if not sets_pc:
+                # bits AA contain the number
+                # of operands for a given instruction
+                instruction_size = ir >> 6
+                self.pc += 1 + instruction_size
 
     def ram_read(self, address):
         return self.ram[address]
@@ -121,4 +134,19 @@ class CPU:
 
     def handle_pop(self, op, a, b):
         self.reg[a] = self.ram[self.reg[7]]
+        self.reg[7] += 1
+
+    def handle_call(self, op, a, b):
+        # push the address to continue at
+        # after returning from the call
+        self.reg[7] -= 1
+        self.ram[self.reg[7]] = self.pc + 2
+
+        # set the PC to the address stored in given register
+        self.pc = self.reg[a]
+
+    def handle_ret(self, op, a, b):
+        # pop off and return to the address
+        # previously pushed
+        self.pc = self.ram[self.reg[7]]
         self.reg[7] += 1
