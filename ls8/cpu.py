@@ -26,6 +26,7 @@ DIV = 0b10100011
 INC = 0b01100101
 MOD = 0b10100100
 MUL = 0b10100010
+NOT = 0b01101001
 OR = 0b10101010
 SHL = 0b10101100
 SHR = 0b10101101
@@ -83,6 +84,20 @@ class CPU:
                 self.fl = 0b00000010
             elif self.reg[a] == self.reg[b]:
                 self.fl = 0b00000001
+        elif op == AND:
+            self.reg[a] &= self.reg[b]
+        elif op == OR:
+            self.reg[a] |= self.reg[b]
+        elif op == XOR:
+            self.reg[a] ^= self.reg[b]
+        elif op == NOT:
+            self.reg[a] = ~self.reg[a]
+        elif op == SHL:
+            self.reg[a] <<= self.reg[b]
+        elif op == SHR:
+            self.reg[a] >>= self.reg[b]
+        elif op == MOD:
+            self.reg[a] %= self.reg[b]
         else:
             raise Exception("Unsupported ALU operation")
 
