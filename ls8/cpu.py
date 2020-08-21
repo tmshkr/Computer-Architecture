@@ -7,6 +7,9 @@ import re
 # https://github.com/tmshkr/Computer-Architecture/blob/master/LS8-spec.md#instruction-set
 CALL = 0b01010000
 HLT = 0b00000001
+JEQ = 0b01010101
+JNE = 0b01010110
+JMP = 0b01010100
 LDI = 0b10000010
 NOP = 0b00000000
 PUSH = 0b01000101
@@ -38,14 +41,16 @@ class CPU:
         self.reg = [0] * 8
         self.reg[7] = 0xF4  # stack pointer
         self.pc = 0
+        self.fl = 0  # flags register for CMP op
 
         # Set up the branch table
         self.branchtable = {}
-        self.branchtable[ADD] = self.alu
         self.branchtable[CALL] = self.handle_call
         self.branchtable[HLT] = self.handle_hlt
+        self.branchtable[JEQ] = self.handle_jeq
+        self.branchtable[JMP] = self.handle_jmp
+        self.branchtable[JNE] = self.handle_jne
         self.branchtable[LDI] = self.handle_ldi
-        self.branchtable[MUL] = self.alu
         self.branchtable[PRN] = self.handle_prn
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
@@ -71,7 +76,13 @@ class CPU:
             self.reg[a] *= self.reg[b] & 0xFF
         elif op == ADD:
             self.reg[a] += self.reg[b] & 0xFF
-        # elif op == "SUB": etc
+        elif op == CMP:
+            if self.reg[a] < self.reg[b]:
+                self.fl = 0b00000100
+            elif self.reg[a] > self.reg[b]:
+                self.fl = 0b00000010
+            elif self.reg[a] == self.reg[b]:
+                self.fl = 0b00000001
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -102,9 +113,14 @@ class CPU:
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            self.branchtable[ir](ir, operand_a, operand_b)
-
             # AABCDDDD
+            # if bit B is 1, it's an ALU op
+            is_alu_op = ir >> 5 & 0b1
+            if is_alu_op:
+                self.alu(ir, operand_a, operand_b)
+            else:
+                self.branchtable[ir](ir, operand_a, operand_b)
+
             # if bit C is 1, it sets the PC
             sets_pc = ir >> 4 & 0b1
             if not sets_pc:
@@ -150,3 +166,19 @@ class CPU:
         # previously pushed
         self.pc = self.ram[self.reg[7]]
         self.reg[7] += 1
+
+    def handle_jmp(self, op, a, b):
+        # set the PC to the address stored in given register
+        self.pc = self.reg[a]
+
+    def handle_jeq(self, op, a, b):
+        if (self.fl & 1):
+            self.pc = self.reg[a]
+        else:
+            self.pc += 2
+
+    def handle_jne(self, op, a, b):
+        if not (self.fl & 1):
+            self.pc = self.reg[a]
+        else:
+            self.pc += 2
